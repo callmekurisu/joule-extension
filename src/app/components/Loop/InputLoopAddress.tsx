@@ -7,6 +7,7 @@ import { setLoop } from 'modules/loop/actions';
 
 interface Props {
   initialUrl?: string | null;
+  loopMacaroon: string | null;
   isCheckingLoop: boolean;
   error: Error | null;
   setLoop: typeof setLoop;
@@ -15,6 +16,7 @@ interface Props {
 
 interface State {
   url: string;
+  loopMacaroon: string;
   submittedUrl: string;
   validation: string;
 }
@@ -22,6 +24,7 @@ interface State {
 export default class InputLoopAddress extends React.Component<Props, State> {
   state: State = {
     url: this.props.initialUrl || '',
+    loopMacaroon: this.props.loopMacaroon || '',
     submittedUrl: this.props.initialUrl || '',
     validation: '',
   };
@@ -79,6 +82,7 @@ export default class InputLoopAddress extends React.Component<Props, State> {
 
   private handleSubmit = (ev: React.FormEvent<HTMLFormElement>) => {
     const url = this.state.url.replace(/\/$/, '');
+    const loopMacaroon = this.state.loopMacaroon;
     const loop = this.props;
     ev.preventDefault();
     browser.permissions
@@ -90,7 +94,7 @@ export default class InputLoopAddress extends React.Component<Props, State> {
           message.warn('Permission denied, connection may fail');
         }
         this.setState({ submittedUrl: url });
-        loop.setLoop(url);
+        loop.setLoop(url, loopMacaroon);
       });
   };
 }
