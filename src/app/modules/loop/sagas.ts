@@ -92,6 +92,10 @@ export function* handleGetLoopTerms(
       selectLoopLibOrThrow,
     );
     const libCall = isOut ? loopLib.getLoopOutTerms : loopLib.getLoopInTerms;
+    /**
+     * TODO: find out how to resolve: "No overload matches this call."
+     */
+    // @ts-ignore
     payload = (yield call(libCall, action.payload)) as Yielded<typeof libCall>;
     type = isOut ? types.GET_LOOP_OUT_TERMS_SUCCESS : types.GET_LOOP_IN_TERMS_SUCCESS;
   } catch (err) {
