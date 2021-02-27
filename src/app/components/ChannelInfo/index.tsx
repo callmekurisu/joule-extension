@@ -10,20 +10,35 @@ import Copy from 'components/Copy';
 import { CHANNEL_STATUS } from 'lnd/message';
 import { AppState } from 'store/reducers';
 import { getAccountInfo } from 'modules/account/actions';
+import { deactivateCharm, activateCharm } from 'modules/loop/actions';
 import { closeChannel } from 'modules/channels/actions';
 import { ChannelWithNode } from 'modules/channels/types';
 import { channelStatusText } from 'utils/constants';
 import { ellipsisSandwich, enumToClassName, makeTxUrl } from 'utils/formatters';
 import './index.less';
+import { charmControl } from 'utils/charm';
+import Help from 'components/Help';
 
 interface StateProps {
   account: AppState['account']['account'];
+  channels: AppState['channels']['channels'];
   node: AppState['node']['nodeInfo'];
+  charm: AppState['loop']['charm'];
 }
+
+interface State {
+  isCharmActive: boolean;
+}
+
+const INITIAL_STATE = {
+  isCharmActive: false,
+};
 
 interface DispatchProps {
   getAccountInfo: typeof getAccountInfo;
   closeChannel: typeof closeChannel;
+  activateCharm: typeof activateCharm;
+  deactivateCharm: typeof deactivateCharm;
 }
 
 interface OwnProps {
@@ -34,6 +49,8 @@ interface OwnProps {
 type Props = StateProps & DispatchProps & OwnProps;
 
 class ChannelInfo extends React.Component<Props> {
+  state: State = { ...INITIAL_STATE };
+
   componentDidMount() {
     if (!this.props.account) {
       this.props.getAccountInfo();
@@ -105,8 +122,19 @@ class ChannelInfo extends React.Component<Props> {
   }
 
   private getChannelDetails = (): DetailsRow[] => {
-    const { channel, node } = this.props;
+    const { channel, node, charm, account } = this.props;
 
+    const isChannelCharmEligible =
+      account != null &&
+      parseInt(account.blockchainBalance, 10) >= parseInt(channel.capacity, 10) * 0.5;
+    const isCharmAlreadyActive =
+      charm !== null &&
+      channel.channel_point === charm.point &&
+      charm !== null &&
+      charm.isCharmEnabled;
+    const ACTIVATED = 'activated';
+    const DEACTIVATE = 'deactivate';
+    const ACTIVATE = 'activate';
     const txLink = (txid: string) => (
       <a
         href={node ? makeTxUrl(txid, node.chains[0], node.testnet) : ''}
@@ -123,6 +151,39 @@ class ChannelInfo extends React.Component<Props> {
       {
         label: 'Status',
         value: channelStatusText[channel.status],
+      },
+      {
+        label: 'CHARM',
+        value: (
+          <>
+            {/* these buttons are stupid messy, TODO: fix  */}
+            {isChannelCharmEligible && !isCharmAlreadyActive ? (
+              <>
+                <Button ghost type="primary" onClick={this.toggleCharm}>
+                  {charm != null &&
+                  channel.channel_point === charm.point &&
+                  charm.isCharmEnabled
+                    ? ACTIVATED
+                    : ACTIVATE}
+                </Button>
+              </>
+            ) : isChannelCharmEligible && isCharmAlreadyActive ? (
+              <>
+                <Button type="primary" onClick={this.forceDeactivateCHARM}>
+                  {DEACTIVATE}
+                </Button>
+              </>
+            ) : (
+              <></>
+            )}{' '}
+            <Help>
+              Joule's Channel Automated Rebalancing and Liquidity Management - CHARM -
+              checks your on-chain funds for at least 50% of the channel capacity for
+              eligibility. Only one channel can have CHARM activated and can be identified
+              by the purple progress bar.
+            </Help>
+          </>
+        ),
       },
       {
         label: 'Capacity',
@@ -198,15 +259,65 @@ class ChannelInfo extends React.Component<Props> {
       },
     });
   };
+
+  /**
+   * toggle CHARM activation for a particular channel
+   */
+  private toggleCharm = () => {
+    const isCharmActivated = this.state.isCharmActive;
+    this.setState({ isCharmActive: isCharmActivated === false ? true : false });
+    deactivateCharm();
+    this.callCharmControl();
+  };
+
+  /**
+   * force deactivate CHARM
+   */
+  private forceDeactivateCHARM = () => {
+    this.setState({ isCharmActive: false });
+    this.props.deactivateCharm();
+  };
+
+  /**
+   * Method to activate/inactivate CHARM
+   */
+  private callCharmControl = () => {
+    /* CHARM: if the on-chain wallet is less than 50% of channel capacity, hide it
+        currently only one channel can be CHARM enabled at a time
+        display for CHARM eligibility requirements will show if ineligible
+    */
+    const { account, charm, channels, channel } = this.props;
+    // initial CHARM eligibility check
+    const capacityCheck = parseInt(channel.capacity, 10) * 0.5;
+    const onChainFunds = account != null ? parseInt(account.blockchainBalance, 10) : 0;
+    const isCharmEligible = onChainFunds >= capacityCheck ? true : false;
+    const isCharmEnabled =
+      charm != null && charm.point === channel.channel_point
+        ? charm.isCharmEnabled
+        : false;
+    const control = charmControl(channels, channel, isCharmEligible);
+    if (isCharmEligible && !this.state.isCharmActive) {
+      this.props.activateCharm(control);
+    }
+    if (isCharmEligible && isCharmEnabled) {
+      this.props.deactivateCharm();
+    }
+  };
 }
 
 export default connect<StateProps, DispatchProps, OwnProps, AppState>(
   state => ({
     account: state.account.account,
+    channels: state.channels.channels,
     node: state.node.nodeInfo,
+    charm: state.loop.charm,
+    in: state.loop.in,
+    out: state.loop.out,
   }),
   {
     getAccountInfo,
     closeChannel,
+    activateCharm,
+    deactivateCharm,
   },
 )(ChannelInfo);

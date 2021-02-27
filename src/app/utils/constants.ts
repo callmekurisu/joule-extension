@@ -13,12 +13,35 @@ export enum NODE_TYPE {
   LIGHTNING_APP = 'LIGHTNING_APP',
   ZAP_DESKTOP = 'ZAP_DESKTOP',
   BTCPAY_SERVER = 'BTCPAY_SERVER',
+  LOOP = 'LIGHTNING LOOP',
 }
 
+export enum LOOP_TYPE {
+  LOOP_OUT = 'Loop Out',
+  LOOP_IN = 'Loop In',
+}
+
+export enum SWAP_STATUS {
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED',
+  INITIATED = 'INITIATED',
+  HTLC_PUBLISHED = 'HTLC_PUBLISHED',
+}
+
+export enum CHARM_VALUES {
+  // loop out threshold
+  LOT = 0.8,
+  // loop in threshold
+  LIT = 0.2,
+  // mean (>_<)
+  U = 0.5,
+  NO_THRESHOLD = 0,
+}
 export const DEFAULT_NODE_URLS = {
   [NODE_TYPE.LOCAL]: 'https://localhost:8080',
   [NODE_TYPE.LIGHTNING_APP]: 'https://localhost:8086',
   [NODE_TYPE.ZAP_DESKTOP]: 'https://localhost:8180',
+  [NODE_TYPE.LOOP]: 'http://localhost:8081',
 } as { [key in NODE_TYPE]: string | undefined };
 
 interface LndDirectories {
@@ -42,6 +65,11 @@ export const DEFAULT_LND_DIRS = {
     MACOS: '~/Library/Application Support/Zap/lnd/bitcoin/*',
     LINUX: '~/.config/Zap/lnd/data/chain/*',
     WINDOWS: '%APPDATA%\\Roaming\\Zap\\lnd\\data\\chain\\*',
+  },
+  [NODE_TYPE.LOOP]: {
+    MACOS: ',',
+    LINUX: '~/.loop/mainnet/loop.macaroon',
+    WINDOWS: '',
   },
 } as { [key in NODE_TYPE]: LndDirectories | undefined };
 

@@ -1,12 +1,14 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import { Tabs, Icon, Drawer } from 'antd';
+import { Tabs, Icon, Drawer, message } from 'antd';
 import AccountInfo from 'components/AccountInfo';
 import ChannelList from 'components/ChannelList';
 import TransactionList from 'components/TransactionList';
+import SwapList from 'components/SwapList';
 import SendForm from 'components/SendForm';
 import InvoiceForm from 'components/InvoiceForm';
 import TransactionInfo from 'components/TransactionInfo';
+import SwapInfo from 'components/SwapInfo';
 import ConnectionFailureModal from 'components/ConnectionFailureModal';
 import { AppState } from 'store/reducers';
 import ChannelInfo from 'components/ChannelInfo';
@@ -15,15 +17,47 @@ import { AnyTransaction } from 'modules/account/types';
 import { getAccountInfo } from 'modules/account/actions';
 import { getChannels } from 'modules/channels/actions';
 import './home.less';
+import { SwapResponse, GetLoopTermsResponse } from 'lib/loop-http';
+import {
+  loopIn,
+  loopOut,
+  activateCharm,
+  deactivateCharm,
+  getLoopOutQuote,
+  getLoopInQuote,
+  listSwaps,
+  getLoopOutTerms,
+  getLoopInTerms,
+} from 'modules/loop/actions';
+import {
+  processCharm,
+  preprocessCharmEligibility,
+  EligibilityPreProcessor,
+  isSwapInitiated,
+  CharmAmt,
+} from 'utils/charm';
+import { LOOP_TYPE } from 'utils/constants';
 
 interface StateProps {
   nodeUrl: AppState['node']['url'];
+  account: AppState['account']['account'];
+  channels: AppState['channels']['channels'];
+  loop: AppState['loop'];
   fetchAccountInfoError: AppState['account']['fetchAccountInfoError'];
 }
 
 interface DispatchProps {
   getAccountInfo: typeof getAccountInfo;
   getChannels: typeof getChannels;
+  getLoopOutQuote: typeof getLoopOutQuote;
+  getLoopInQuote: typeof getLoopInQuote;
+  getLoopOutTerms: typeof getLoopOutTerms;
+  getLoopInTerms: typeof getLoopInTerms;
+  loopIn: typeof loopIn;
+  loopOut: typeof loopOut;
+  listSwaps: typeof listSwaps;
+  activateCharm: typeof activateCharm;
+  deactivateCharm: typeof deactivateCharm;
 }
 
 type Props = DispatchProps & StateProps;
@@ -41,6 +75,22 @@ class HomePage extends React.Component<Props, State> {
     isDrawerOpen: false,
   };
   drawerTimeout: any = null;
+
+  componentDidMount() {
+    // if loop url is setup, do it
+
+    if (this.props.loop.url !== null) {
+      // tslint:disable-next-line: no-unused-expression
+      // get fresh swaps and terms
+      this.props.getLoopInTerms();
+      this.props.getLoopOutTerms();
+      this.props.listSwaps();
+      // initialize CHARM
+      setTimeout(() => {
+        this.initializeCharm();
+      }, 1618);
+    }
+  }
 
   render() {
     const { nodeUrl, fetchAccountInfoError } = this.props;
@@ -72,6 +122,16 @@ class HomePage extends React.Component<Props, State> {
             key="transactions"
           >
             <TransactionList onClick={this.handleTransactionClick} />
+          </Tabs.TabPane>
+          <Tabs.TabPane
+            tab={
+              <>
+                <Icon type="monitor" /> Swaps
+              </>
+            }
+            key="swaps"
+          >
+            <SwapList onClick={this.handleSwapsClick} />
           </Tabs.TabPane>
         </Tabs>
 
@@ -138,19 +198,172 @@ class HomePage extends React.Component<Props, State> {
     this.openDrawer(<TransactionInfo tx={tx} />, 'Transaction Details');
   };
 
+  private handleSwapsClick = (swap: SwapResponse) => {
+    this.openDrawer(<SwapInfo swap={swap} />, 'Loop There It Is');
+  };
+
   private retryConnection = () => {
     this.props.getAccountInfo();
     this.props.getChannels();
   };
+
+  /** Start CHARM Logic */
+
+  /**
+   * Run the processor for CHARM
+   */
+  private initializeCharm = () => {
+    setTimeout(() => {
+      const swapCheck = isSwapInitiated(this.props.loop.swapInfo);
+      // temporary handling for waiting for account info to load
+      const { account, channels, loop } = this.props;
+      // run the eligibility check
+      const preprocess = preprocessCharmEligibility(account, channels, loop.charm);
+      const isEligible =
+        parseInt(preprocess.balance, 10) >= parseInt(preprocess.capacity, 10) * 0.5;
+      if (isEligible && !swapCheck.isInitiated) {
+        this.charmProcessor(preprocess);
+      }
+      if (!isEligible || (loop.charm === null && this.props.loop.url != null)) {
+        message.warn(`CHARM is disabled due to failed eligibility check`);
+        this.props.deactivateCharm();
+      }
+    }, 1618);
+  };
+
+  /**
+   * Process eligibility for automated looping
+   */
+  private charmProcessor = (preprocess: EligibilityPreProcessor) => {
+    const { loop } = this.props;
+    // run  the CHARM algorithm
+    const charmData = processCharm(preprocess.capacity, preprocess.localBalance);
+    console.log(`debug charm amt: ${charmData.amt}`);
+    if (charmData.amt > 0 && loop.charm !== null) {
+      // generate a quote first
+      if (charmData.type === LOOP_TYPE.LOOP_IN) {
+        const { terms } = this.props.loop.in;
+        const isCharmInThreshold = this.isCharmAmtValid(terms, charmData);
+        if (isCharmInThreshold) {
+          this.props.getLoopInQuote(charmData.amt);
+          this.charmLoop(charmData.amt.toString(), loop.charm.id, charmData.type);
+        }
+        if (!isCharmInThreshold) {
+          message.warn(`CHARM is above 20% threshold`);
+          this.props.deactivateCharm();
+        }
+      }
+      if (charmData.type === LOOP_TYPE.LOOP_OUT) {
+        const { terms } = this.props.loop.in;
+        const isCharmInThreshold = this.isCharmAmtValid(terms, charmData);
+        if (isCharmInThreshold) {
+          this.props.getLoopOutQuote(charmData.amt);
+          this.charmLoop(charmData.amt.toString(), loop.charm.id, charmData.type);
+        }
+        if (!isCharmInThreshold) {
+          message.warn(`CHARM is below 80% threshold`);
+          this.props.deactivateCharm();
+        }
+      }
+    }
+  };
+
+  private charmLoop = (amount: string, channelId: string, type: string) => {
+    // ready, set, automated looping
+
+    // temporary delay while generating quotes
+    setTimeout(() => {
+      /*TODO: is this a good default for sweep target?
+        will add advance CHARM setup to handle value tweaking
+        next time.
+      */
+      const SWEEP_CONF_TARGET = '2';
+      /*
+        The latest time (in unix seconds) we allow the server to wait before
+        publishing the HTLC on chain. Setting this to a larger value will give the
+        server the opportunity to batch multiple swaps together, and wait for
+        low-fee periods before publishing the HTLC, potentially resulting in a
+        lower total swap fee.
+      */
+      const DEADLINE = '1618';
+      // ready, set, automated looping
+      if (type === LOOP_TYPE.LOOP_IN) {
+        const { quote } = this.props.loop.in;
+        if (!quote) {
+          message.warn(`CHARM failed ${type} quote generation`);
+        } else {
+          /**
+           * TODO: Calculate optimal max swap fee
+           * for max swap fee to high error
+           */
+          const maxSwap = (
+            parseInt(quote.prepay_amt, 10) + parseInt(quote.swap_fee, 10)
+          ).toString();
+          this.props.loopIn({
+            amt: amount,
+            loop_in_channel: channelId,
+            max_miner_fee: quote.miner_fee,
+            max_swap_fee: maxSwap,
+            external_htlc: false,
+          });
+          message.info(`CHARM is attempting ${type} to re-balance`);
+        }
+      }
+      if (type === LOOP_TYPE.LOOP_OUT) {
+        const { quote } = this.props.loop.out;
+        if (!quote) {
+          message.warn(`CHARM failed ${type} quote generation`);
+        } else {
+          this.props.loopOut({
+            amt: amount,
+            loop_out_channel: channelId,
+            max_miner_fee: quote.miner_fee,
+            max_prepay_amt: quote.prepay_amt,
+            max_prepay_routing_fee: quote.prepay_amt,
+            max_swap_fee: quote.swap_fee,
+            max_swap_routing_fee: quote.swap_fee,
+            sweep_conf_target: SWEEP_CONF_TARGET,
+            swap_publication_deadline: DEADLINE,
+          });
+          message.info(`CHARM is attempting ${type} to re-balance`);
+        }
+      }
+    }, 1618);
+  };
+
+  private isCharmAmtValid(
+    terms: GetLoopTermsResponse | null,
+    charmData: CharmAmt,
+  ): boolean {
+    const minSwapAmt = terms != null ? parseInt(terms.min_swap_amount, 10) : 0;
+    const maxSwapAmt = terms != null ? parseInt(terms.max_swap_amount, 10) : 0;
+    if (charmData.amt >= minSwapAmt && charmData.amt <= maxSwapAmt) {
+      return true;
+    }
+    return false;
+    /** End CHARM Logic */
+  }
 }
 
 export default connect<StateProps, DispatchProps, {}, AppState>(
   state => ({
     nodeUrl: state.node.url,
+    account: state.account.account,
+    channels: state.channels.channels,
+    loop: state.loop,
     fetchAccountInfoError: state.account.fetchAccountInfoError,
   }),
   {
     getAccountInfo,
     getChannels,
+    getLoopOutQuote,
+    getLoopInQuote,
+    getLoopOutTerms,
+    getLoopInTerms,
+    loopOut,
+    loopIn,
+    listSwaps,
+    activateCharm,
+    deactivateCharm,
   },
 )(HomePage);
