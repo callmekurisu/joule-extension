@@ -2,6 +2,7 @@ import { stringify } from 'query-string';
 import { NetworkError } from './errors';
 import { parseLoopErrorResponse } from './utils';
 import * as T from './types';
+import * as LT from '../../../lnd/types';
 import { CharmPayload } from 'modules/loop/types';
 export * from './errors';
 export * from './types';
@@ -10,10 +11,12 @@ export type ApiMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 export class LoopHttpClient {
   url: string;
+  macaroon: undefined | LT.Macaroon;
 
-  constructor(url: string) {
+  constructor(url: string, macaroon?: LT.Macaroon) {
     // Remove trailing slash for consistency
     this.url = url.replace(/\/$/, '');
+    this.macaroon = macaroon;
   }
 
   // Public API methods
@@ -99,6 +102,10 @@ export class LoopHttpClient {
     } else if (args !== undefined) {
       // TS Still thinks it might be undefined(?)
       query = `?${stringify(args as any)}`;
+    }
+
+    if (this.macaroon) {
+      headers.append('Grpc-Metadata-macaroon', this.macaroon);
     }
 
     return fetch(this.url + path + query, {

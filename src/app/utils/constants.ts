@@ -66,6 +66,11 @@ export const DEFAULT_LND_DIRS = {
     LINUX: '~/.config/Zap/lnd/data/chain/*',
     WINDOWS: '%APPDATA%\\Roaming\\Zap\\lnd\\data\\chain\\*',
   },
+  [NODE_TYPE.LOOP]: {
+    MACOS: ',',
+    LINUX: '~/.loop/mainnet/loop.macaroon',
+    WINDOWS: '',
+  },
 } as { [key in NODE_TYPE]: LndDirectories | undefined };
 
 export enum CHAIN_TYPE {

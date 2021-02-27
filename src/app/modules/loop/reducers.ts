@@ -23,6 +23,7 @@ interface LoopTypeState {
 export interface LoopState {
   lib: null | LoopHttpClient;
   url: null | string;
+  loopMacaroon: null | string;
 
   isCheckingUrl: boolean;
   checkUrlError: null | Error;
@@ -54,6 +55,7 @@ const INITIAL_LOOP_TYPE_STATE: LoopTypeState = {
 export const INITIAL_STATE: LoopState = {
   lib: null,
   url: null,
+  loopMacaroon: null,
   isCheckingUrl: false,
   checkUrlError: null,
 
@@ -84,6 +86,7 @@ export default function loopReducers(
       return {
         ...state,
         url: null,
+        loopMacaroon: null,
         lib: null,
         isCheckingUrl: true,
         checkUrlError: null,
@@ -91,9 +94,10 @@ export default function loopReducers(
     case types.SET_LOOP_URL_SUCCESS:
       return {
         ...state,
-        url: action.payload,
+        url: action.payload.url,
+        loopMacaroon: action.payload.loopMacaroon,
         isCheckingUrl: false,
-        lib: new LoopHttpClient(action.payload),
+        lib: new LoopHttpClient(action.payload.url, action.payload.loopMacaroon),
       };
     case types.SET_LOOP_URL_FAILURE:
       return {

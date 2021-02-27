@@ -6,9 +6,12 @@ import { setLoop } from 'modules/loop/actions';
 import { AppState } from 'store/reducers';
 import './LoopSetup.less';
 import { connect } from 'react-redux';
+import { NODE_TYPE } from 'utils/constants';
+import UploadMacaroon from './UploadMacaroon';
 
 interface StateProps {
   url: AppState['loop']['url'];
+  loopMacaroon: AppState['loop']['loopMacaroon'];
   isCheckingUrl: AppState['loop']['isCheckingUrl'];
   error: AppState['loop']['checkUrlError'];
 }
@@ -25,6 +28,7 @@ type Props = StateProps & DispatchProps & OwnProps;
 
 interface State {
   url: string;
+  loopMacaroon: string;
   submittedUrl: string;
   validation: string;
 }
@@ -32,6 +36,7 @@ interface State {
 class LoopSetup extends React.Component<Props, State> {
   state: State = {
     url: this.props.url || '',
+    loopMacaroon: this.props.loopMacaroon || '',
     submittedUrl: this.props.url || '',
     validation: '',
   };
@@ -45,7 +50,7 @@ class LoopSetup extends React.Component<Props, State> {
   }
 
   render() {
-    const { validation, url } = this.state;
+    const { validation, url, loopMacaroon } = this.state;
     const { isCheckingUrl } = this.props;
     const validateStatus = url ? (validation ? 'error' : 'success') : undefined;
     return (
@@ -77,12 +82,14 @@ class LoopSetup extends React.Component<Props, State> {
           }
         />
         <Form className="LoopSetup-form" onSubmit={this.handleSubmit} layout="vertical">
+          <UploadMacaroon onUploaded={this.handleMacaroons} nodeType={NODE_TYPE.LOOP} />
+
           <Form.Item label="Loop API URL" validateStatus={validateStatus}>
             <Input
               type="url"
               value={url}
               onChange={this.handleChange}
-              placeholder="http://localhost:8081"
+              placeholder="https://localhost:8081"
               autoFocus
             />
           </Form.Item>
@@ -91,7 +98,7 @@ class LoopSetup extends React.Component<Props, State> {
             type="primary"
             size="large"
             htmlType="submit"
-            disabled={!url}
+            disabled={!url || !loopMacaroon}
             loading={isCheckingUrl}
             block
           >
@@ -101,6 +108,10 @@ class LoopSetup extends React.Component<Props, State> {
       </div>
     );
   }
+
+  private handleMacaroons = (loopMacaroon: string) => {
+    this.setState({ loopMacaroon });
+  };
 
   private handleChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
     const url = ev.currentTarget.value;
@@ -117,7 +128,7 @@ class LoopSetup extends React.Component<Props, State> {
   private handleSubmit = (ev: React.FormEvent<HTMLFormElement>) => {
     ev.preventDefault();
     const url = this.state.url.replace(/\/$/, '');
-
+    const loopMacaroon = this.state.loopMacaroon;
     browser.permissions
       .request({
         origins: [urlWithoutPort(url)],
@@ -127,7 +138,7 @@ class LoopSetup extends React.Component<Props, State> {
           message.warn('Permission denied, connection may fail');
         }
         this.setState({ submittedUrl: url });
-        this.props.setLoop(url);
+        this.props.setLoop(url, loopMacaroon);
       });
   };
 }
@@ -135,6 +146,7 @@ class LoopSetup extends React.Component<Props, State> {
 export default connect<StateProps, DispatchProps, {}, AppState>(
   state => ({
     url: state.loop.url,
+    loopMacaroon: state.loop.loopMacaroon,
     isCheckingUrl: state.loop.isCheckingUrl,
     error: state.loop.checkUrlError,
   }),

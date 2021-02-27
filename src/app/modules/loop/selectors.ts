@@ -2,6 +2,7 @@ import { AppState } from 'store/reducers';
 
 export const selectSyncedLoopState = (s: AppState) => ({
   url: s.loop.url,
+  loopMacaroon: s.loop.loopMacaroon,
 });
 
 export const selectSyncedCharmState = (s: AppState) => ({
