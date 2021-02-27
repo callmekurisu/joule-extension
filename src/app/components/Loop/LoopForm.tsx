@@ -14,7 +14,7 @@ import {
   resetLoop,
 } from 'modules/loop/actions';
 import { LOOP_TYPE } from 'utils/constants';
-import { CHANNEL_STATUS } from 'lib/lnd-http';
+import { CHANNEL_STATUS } from 'lnd/http';
 import Loader from 'components/Loader';
 import BigMessage from 'components/BigMessage';
 import { RadioChangeEvent } from 'antd/lib/radio';
@@ -267,8 +267,9 @@ class LoopForm extends React.Component<Props> {
                       value={sweepConfirmationTarget}
                       onChange={this.handleChangeField}
                       placeholder="Minimum 2"
-                      addonAfter={`blocks (~${parseInt(sweepConfirmationTarget, 10) *
-                        10} minutes)`}
+                      addonAfter={`blocks (~${
+                        parseInt(sweepConfirmationTarget, 10) * 10
+                      } minutes)`}
                       autoFocus
                     />
                   </Form.Item>
@@ -348,9 +349,7 @@ class LoopForm extends React.Component<Props> {
       if (Number.isNaN(sctAmt)) {
         errors.sweepConfirmationTarget = 'Must be a valid number';
       } else if (loop.terms && sctAmt > loop.terms.cltv_delta) {
-        errors.sweepConfirmationTarget = `Must be less than CLTV delta (${
-          loop.terms.cltv_delta
-        })`;
+        errors.sweepConfirmationTarget = `Must be less than CLTV delta (${loop.terms.cltv_delta})`;
       } else if (sctAmt < 2) {
         errors.sweepConfirmationTarget = 'Must be greater than 2';
       }
