@@ -1,13 +1,12 @@
 import { stringify } from 'query-string';
-import { parseNodeErrorResponse, txIdBytesToHex } from './utils';
-import { NetworkError, SendTransactionError } from './errors';
-import * as T from './types';
-export * from './errors';
-export * from './types';
+import { txIdBytesToHex } from '../utils';
+import * as T from '../types';
+export * from '../errors';
+export * from '../types';
 
 export type ApiMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
-export class LndHttpClient {
+export class LndHttpClient implements T.LndAPI {
   url: string;
   macaroon: undefined | T.Macaroon;
 
@@ -46,25 +45,29 @@ export class LndHttpClient {
       channels: [],
     }).then(res => {
       // Default attributes for channels
-      res.channels = res.channels.map(channel => ({
-        status: T.CHANNEL_STATUS.OPEN,
-        csv_delay: 0,
-        num_updates: 0,
-        private: false,
-        pending_htlcs: [],
-        remote_balance: '0',
-        commit_weight: '0',
-        capacity: '0',
-        local_balance: '0',
-        total_satoshis_received: '0',
-        active: false,
-        commit_fee: '0',
-        fee_per_kw: '0',
-        unsettled_balance: '0',
-        total_satoshis_sent: '0',
-        remote_node_pub: (channel as any).remote_pubkey,
-        ...channel,
-      }));
+      res.channels = res.channels.map(channel => {
+        return Object.assign(
+          {
+            status: T.CHANNEL_STATUS.OPEN,
+            csv_delay: 0,
+            num_updates: 0,
+            private: false,
+            pending_htlcs: [],
+            remote_balance: '0',
+            commit_weight: '0',
+            capacity: '0',
+            local_balance: '0',
+            total_satoshis_received: '0',
+            active: false,
+            commit_fee: '0',
+            fee_per_kw: '0',
+            unsettled_balance: '0',
+            total_satoshis_sent: '0',
+            remote_node_pub: (channel as any).remote_pubkey,
+          },
+          channel,
+        );
+      });
       return res;
     });
   };
@@ -161,12 +164,16 @@ export class LndHttpClient {
     return this.request<T.GetTransactionsResponse>('GET', '/v1/transactions', undefined, {
       transactions: [],
     }).then(res => {
-      res.transactions = res.transactions.map(tx => ({
-        total_fees: '0',
-        amount: '0',
-        num_confirmations: 0,
-        ...tx,
-      }));
+      res.transactions = res.transactions.map(tx => {
+        return Object.assign(
+          {
+            total_fees: '0',
+            amount: '0',
+            num_confirmations: 0,
+          },
+          tx,
+        );
+      });
       return res;
     });
   };
@@ -175,11 +182,15 @@ export class LndHttpClient {
     return this.request<T.GetPaymentsResponse>('GET', '/v1/payments', undefined, {
       payments: [],
     }).then(res => {
-      res.payments = res.payments.map(t => ({
-        fee: '0',
-        path: [],
-        ...t,
-      }));
+      res.payments = res.payments.map(t => {
+        return Object.assign(
+          {
+            fee: '0',
+            path: [],
+          },
+          t,
+        );
+      });
       return res;
     });
   };
@@ -196,11 +207,15 @@ export class LndHttpClient {
       },
     ).then(res => {
       // Default attributes for channels
-      res.invoices = res.invoices.map(invoice => ({
-        route_hints: [],
-        settled: false,
-        ...invoice,
-      }));
+      res.invoices = res.invoices.map(invoice => {
+        return Object.assign(
+          {
+            route_hints: [],
+            settled: false,
+          },
+          invoice,
+        );
+      });
       return res;
     });
   };
@@ -244,11 +259,15 @@ export class LndHttpClient {
       { routes: [] },
     ).then(res => {
       // Default attributes for channels
-      res.routes = res.routes.map(route => ({
-        total_fees: '0',
-        total_fees_msat: '0',
-        ...route,
-      }));
+      res.routes = res.routes.map(route => {
+        return Object.assign(
+          {
+            total_fees: '0',
+            total_fees_msat: '0',
+          },
+          route,
+        );
+      });
       return res;
     });
   };
@@ -260,7 +279,8 @@ export class LndHttpClient {
       args,
     ).then(res => {
       if (res.payment_error) {
-        throw new SendTransactionError(res.payment_error);
+        // Make it easy to convert on the other side
+        throw new Error(`SendTransactionError: ${res.payment_error}`);
       }
       return {
         ...res,
@@ -277,11 +297,11 @@ export class LndHttpClient {
     );
   };
 
-  getAddress = (_: T.AddressType = 'p2wkh') => {
+  getAddress = (args: T.NewAddressArguments) => {
     return this.request<T.NewAddressResponse, T.NewAddressArguments>(
       'GET',
       '/v1/newaddress',
-      // { type },
+      args,
     );
   };
 
@@ -290,14 +310,18 @@ export class LndHttpClient {
       peers: [],
     }).then(res => {
       // Default attributes for peers
-      res.peers = res.peers.map(peer => ({
-        ping_time: '0',
-        sat_sent: '0',
-        sat_recv: '0',
-        bytes_sent: '0',
-        bytes_recv: '0',
-        ...peer,
-      }));
+      res.peers = res.peers.map(peer => {
+        return Object.assign(
+          {
+            ping_time: '0',
+            sat_sent: '0',
+            sat_recv: '0',
+            bytes_sent: '0',
+            bytes_recv: '0',
+          },
+          peer,
+        );
+      });
       return res;
     });
   };
@@ -314,11 +338,13 @@ export class LndHttpClient {
       '/v1/channels',
       params,
     ).then(res => {
-      return {
-        output_index: '0',
-        funding_txid_str: txIdBytesToHex(res.funding_txid_bytes),
-        ...res,
-      };
+      return Object.assign(
+        {
+          output_index: '0',
+          funding_txid_str: txIdBytesToHex(res.funding_txid_bytes),
+        },
+        res,
+      );
     });
   };
 
@@ -367,12 +393,12 @@ export class LndHttpClient {
   };
 
   // Internal fetch function
-  protected request<R extends object, A extends object | undefined = undefined>(
+  protected async request<R extends object, A extends object | undefined = undefined>(
     method: ApiMethod,
     path: string,
     args?: A,
     defaultValues?: Partial<R>,
-  ): T.Response<R> {
+  ): Promise<R> {
     let body = null;
     let query = '';
     const headers = new Headers();
@@ -390,36 +416,42 @@ export class LndHttpClient {
       headers.append('Grpc-Metadata-macaroon', this.macaroon);
     }
 
-    return fetch(this.url + path + query, {
-      method,
-      headers,
-      body,
-    })
-      .then(async res => {
-        if (!res.ok) {
-          let errBody: any;
-          try {
-            errBody = await res.json();
-            if (!errBody.error) throw new Error();
-          } catch (err) {
-            throw new NetworkError(res.statusText, res.status);
-          }
-          const error = parseNodeErrorResponse(errBody);
-          throw error;
-        }
-        return res.json();
-      })
-      .then((res: Partial<R>) => {
-        if (defaultValues) {
-          // TS can't handle generic spreadables
-          return { ...(defaultValues as any), ...(res as any) } as R;
-        }
-        return res as R;
-      })
-      .catch(err => {
-        console.error(`API error calling ${method} ${path}`, err);
-        throw err;
+    try {
+      const res = await fetch(this.url + path + query, {
+        method,
+        headers,
+        body,
       });
+      if (!res.ok) {
+        let errBody: any;
+        try {
+          errBody = await res.json();
+          if (!errBody.error) {
+            throw new Error();
+          }
+        } catch (err) {
+          throw {
+            statusText: res.statusText,
+            status: res.status,
+          } as T.LndAPIResponseError;
+        }
+        console.log('errBody', errBody);
+        throw errBody as T.LndAPIResponseError;
+      }
+      const json = await res.json();
+      if (defaultValues) {
+        // TS can't handle generic spreadables
+        return { ...(defaultValues as any), ...(json as any) } as R;
+      }
+      return json as R;
+    } catch (err) {
+      console.error(`API error calling ${method} ${path}`, err);
+      // Thrown errors must be JSON serializable, so include metadata if possible
+      if (err.code || err.status || !err.message) {
+        throw err;
+      }
+      throw err.message;
+    }
   }
 }
 

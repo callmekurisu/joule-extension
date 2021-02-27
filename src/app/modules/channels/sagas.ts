@@ -6,7 +6,7 @@ import { safeGetNodeInfo, safeConnectPeer, sleep } from 'utils/misc';
 import { openChannel, getChannels, closeChannel } from './actions';
 import types from './types';
 
-export function* handleGetChannels(): SagaIterator {
+export function* handleGetChannels() {
   try {
     const nodeLib: Yielded<typeof selectNodeLibOrThrow> = yield select(
       selectNodeLibOrThrow,
@@ -17,7 +17,7 @@ export function* handleGetChannels(): SagaIterator {
       { pending_force_closing_channels, pending_open_channels, waiting_close_channels },
     ]: [
       Yielded<typeof nodeLib.getChannels>,
-      Yielded<typeof nodeLib.getPendingChannels>
+      Yielded<typeof nodeLib.getPendingChannels>,
     ] = yield all([call(nodeLib.getChannels), call(nodeLib.getPendingChannels)]);
 
     // Map all channels' node info together
@@ -27,23 +27,17 @@ export function* handleGetChannels(): SagaIterator {
       ...pending_open_channels,
       ...waiting_close_channels,
     ];
-    const nodePubKeys = allChannels.reduce(
-      (prev, c) => {
-        prev[c.remote_node_pub] = true;
-        return prev;
-      },
-      {} as { [pubkey: string]: boolean },
-    );
-    const nodeInfoResponses: Array<Yielded<typeof nodeLib.getNodeInfo>> = yield all(
+    const nodePubKeys = allChannels.reduce((prev, c) => {
+      prev[c.remote_node_pub] = true;
+      return prev;
+    }, {} as { [pubkey: string]: boolean });
+    const nodeInfoResponses: Yielded<typeof nodeLib.getNodeInfo>[] = yield all(
       Object.keys(nodePubKeys).map(pk => call(safeGetNodeInfo, nodeLib, pk)),
     );
-    const nodeInfoMap = nodeInfoResponses.reduce(
-      (prev, node) => {
-        prev[node.node.pub_key] = node;
-        return prev;
-      },
-      {} as { [pubkey: string]: Yielded<typeof nodeLib.getNodeInfo> },
-    );
+    const nodeInfoMap = nodeInfoResponses.reduce((prev, node) => {
+      prev[node.node.pub_key] = node;
+      return prev;
+    }, {} as { [pubkey: string]: Yielded<typeof nodeLib.getNodeInfo> });
 
     // Map all channels together with node info
     const payload = allChannels.map(channel => ({
@@ -62,7 +56,7 @@ export function* handleGetChannels(): SagaIterator {
   }
 }
 
-export function* handleOpenChannel(action: ReturnType<typeof openChannel>): SagaIterator {
+export function* handleOpenChannel(action: ReturnType<typeof openChannel>) {
   try {
     yield call(requirePassword);
     const nodeLib: Yielded<typeof selectNodeLibOrThrow> = yield select(
@@ -105,9 +99,7 @@ export function* handleOpenChannel(action: ReturnType<typeof openChannel>): Saga
   }
 }
 
-export function* handleCloseChannel(
-  action: ReturnType<typeof closeChannel>,
-): SagaIterator {
+export function* handleCloseChannel(action: ReturnType<typeof closeChannel>) {
   try {
     yield call(requirePassword);
     const nodeLib: Yielded<typeof selectNodeLibOrThrow> = yield select(

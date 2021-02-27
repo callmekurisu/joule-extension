@@ -6,13 +6,13 @@ import { safeGetNodeInfo, safeConnectPeer } from 'utils/misc';
 import { addPeer } from './actions';
 import types from './types';
 
-export function* handleGetPeers(): SagaIterator {
+export function* handleGetPeers() {
   try {
     const nodeLib: Yielded<typeof selectNodeLibOrThrow> = yield select(
       selectNodeLibOrThrow,
     );
     const { peers }: Yielded<typeof nodeLib.getPeers> = yield call(nodeLib.getPeers);
-    const nodes: Array<Yielded<typeof nodeLib.getNodeInfo>> = yield all(
+    const nodes: Yielded<typeof nodeLib.getNodeInfo>[] = yield all(
       peers.map(p => call(safeGetNodeInfo, nodeLib, p.pub_key)),
     );
     const payload = peers.map((peer, i) => ({
@@ -31,7 +31,7 @@ export function* handleGetPeers(): SagaIterator {
   }
 }
 
-export function* handleAddPeer(action: ReturnType<typeof addPeer>): SagaIterator {
+export function* handleAddPeer(action: ReturnType<typeof addPeer>) {
   try {
     yield call(requirePassword);
     const nodeLib: Yielded<typeof selectNodeLibOrThrow> = yield select(

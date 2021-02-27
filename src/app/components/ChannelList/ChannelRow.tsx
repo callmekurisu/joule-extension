@@ -7,7 +7,7 @@ import Unit from 'components/Unit';
 import { enumToClassName } from 'utils/formatters';
 import { channelStatusText } from 'utils/constants';
 import { ChannelWithNode } from 'modules/channels/types';
-import { CHANNEL_STATUS } from 'lib/lnd-http';
+import { CHANNEL_STATUS } from 'lnd/message';
 import './ChannelRow.less';
 
 interface Props {
@@ -20,10 +20,7 @@ export default class ChannelRow extends React.Component<Props> {
   render() {
     const { channel, onClick, charm } = this.props;
     const { local_balance, capacity, node } = channel;
-    const capacityPct = new BN(local_balance)
-      .muln(100)
-      .div(new BN(capacity))
-      .toString();
+    const capacityPct = new BN(local_balance).muln(100).div(new BN(capacity)).toString();
 
     let tooltipText = channelStatusText[channel.status];
     if (channel.status === CHANNEL_STATUS.FORCE_CLOSING) {
