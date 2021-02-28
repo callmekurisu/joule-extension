@@ -297,12 +297,12 @@ class HomePage extends React.Component<Props, State> {
            * for max swap fee to high error
            */
           const maxSwap = (
-            parseInt(quote.prepay_amt, 10) + parseInt(quote.swap_fee, 10)
+            parseInt(quote.prepay_amt_sat, 10) + parseInt(quote.swap_fee_sat, 10)
           ).toString();
           this.props.loopIn({
             amt: amount,
             loop_in_channel: channelId,
-            max_miner_fee: quote.miner_fee,
+            max_miner_fee: quote.htlc_sweep_fee_sat,
             max_swap_fee: maxSwap,
             external_htlc: false,
           });
@@ -317,11 +317,11 @@ class HomePage extends React.Component<Props, State> {
           this.props.loopOut({
             amt: amount,
             loop_out_channel: channelId,
-            max_miner_fee: quote.miner_fee,
-            max_prepay_amt: quote.prepay_amt,
-            max_prepay_routing_fee: quote.prepay_amt,
-            max_swap_fee: quote.swap_fee,
-            max_swap_routing_fee: quote.swap_fee,
+            max_miner_fee: quote.htlc_sweep_fee_sat,
+            max_prepay_amt: quote.prepay_amt_sat,
+            max_prepay_routing_fee: quote.prepay_amt_sat,
+            max_swap_fee: quote.swap_fee_sat,
+            max_swap_routing_fee: quote.swap_fee_sat,
             sweep_conf_target: SWEEP_CONF_TARGET,
             swap_publication_deadline: DEADLINE,
           });
