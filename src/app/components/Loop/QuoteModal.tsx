@@ -106,11 +106,12 @@ class QuoteModal extends React.Component<Props> {
       );
     } else if (loop.quote) {
       const totalFees =
-        parseInt(loop.quote.miner_fee, 10) + parseInt(loop.quote.swap_fee, 10);
+        parseInt(loop.quote.htlc_sweep_fee_sat, 10) +
+        parseInt(loop.quote.swap_fee_sat, 10);
       const details = [
         {
           label: 'Miner fee (Estimate)',
-          value: `~${loop.quote.miner_fee} sats`,
+          value: `~${loop.quote.htlc_sweep_fee_sat} sats`,
           help: `
             Amount in on-chain fees to do the loop. Miner fees may be more
             than quoted if the transaction doesn't confirm within the sweep
@@ -119,14 +120,14 @@ class QuoteModal extends React.Component<Props> {
         },
         {
           label: 'Swap fee',
-          value: `${loop.quote.swap_fee} sats`,
+          value: `${loop.quote.swap_fee_sat} sats`,
           help: `
             How much the Loop liquidity provider is charging for their service.
           `,
         },
         {
           label: 'Prepay fee',
-          value: `${loop.quote.prepay_amt} sats`,
+          value: `${loop.quote.prepay_amt_sat} sats`,
           help: `
             Some of the swap fee is prepaid to avoid spam and abuse of the
             Loop liquidity provider. This goes towards the total swap fee.
@@ -180,11 +181,11 @@ class QuoteModal extends React.Component<Props> {
       amt: p.amount,
       dest: p.destination,
       loop_out_channel: p.channel,
-      max_miner_fee: p.maxMinerFee || quote.miner_fee,
-      max_prepay_amt: p.maxPrepayAmount || quote.prepay_amt,
-      max_prepay_routing_fee: p.maxPrepayAmount || quote.prepay_amt,
-      max_swap_fee: p.maxSwapFee || quote.swap_fee,
-      max_swap_routing_fee: p.maxSwapFee || quote.swap_fee,
+      max_miner_fee: quote.htlc_sweep_fee_sat,
+      max_prepay_amt: quote.prepay_amt_sat,
+      max_prepay_routing_fee: quote.prepay_amt_sat,
+      max_swap_fee: p.maxSwapFee || quote.swap_fee_sat,
+      max_swap_routing_fee: p.maxSwapFee || quote.swap_fee_sat,
       sweep_conf_target: p.sweepConfirmationTarget,
     };
     p.loopOut(req);
@@ -201,8 +202,8 @@ class QuoteModal extends React.Component<Props> {
     const req: LoopInArguments = {
       amt: p.amount,
       loop_in_channel: p.channel,
-      max_miner_fee: p.maxMinerFee || quote.miner_fee,
-      max_swap_fee: p.maxSwapFee || quote.swap_fee,
+      max_miner_fee: quote.htlc_sweep_fee_sat,
+      max_swap_fee: quote.swap_fee_sat,
       external_htlc: p.htlc,
     };
     this.props.loopIn(req);

@@ -17,9 +17,9 @@ export interface GetLoopTermsResponse {
 }
 
 export interface GetLoopQuoteResponse {
-  swap_fee: string;
-  prepay_amt: string;
-  miner_fee: string;
+  swap_fee_sat: string;
+  prepay_amt_sat: string;
+  htlc_sweep_fee_sat: string;
 }
 
 export interface LoopOutArguments {
@@ -33,6 +33,8 @@ export interface LoopOutArguments {
   loop_out_channel?: string;
   sweep_conf_target?: string;
   swap_publication_deadline?: string;
+  label?: string;
+  initiator?: string;
 }
 
 export interface LoopInArguments {

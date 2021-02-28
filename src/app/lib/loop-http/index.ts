@@ -47,9 +47,9 @@ export class LoopHttpClient {
       `/v1/loop/out/quote/${amount}`,
       { conf_target: confTarget },
       {
-        miner_fee: '0',
-        swap_fee: '0',
-        prepay_amt: '0',
+        htlc_sweep_fee_sat: '0',
+        swap_fee_sat: '0',
+        prepay_amt_sat: '0',
       },
     );
   };
@@ -60,9 +60,9 @@ export class LoopHttpClient {
       `/v1/loop/out/quote/${amount}`,
       { conf_target: confTarget },
       {
-        miner_fee: '0',
-        swap_fee: '0',
-        prepay_amt: '0',
+        htlc_sweep_fee_sat: '0',
+        swap_fee_sat: '0',
+        prepay_amt_sat: '0',
       },
     );
   };
