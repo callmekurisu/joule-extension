@@ -82,28 +82,33 @@ class LoopSetup extends React.Component<Props, State> {
           }
         />
         <Form className="LoopSetup-form" onSubmit={this.handleSubmit} layout="vertical">
-          <UploadMacaroon onUploaded={this.handleMacaroons} nodeType={NODE_TYPE.LOOP} />
+          {!loopMacaroon && (
+            <UploadMacaroon onUploaded={this.handleMacaroons} nodeType={NODE_TYPE.LOOP} />
+          )}
 
-          <Form.Item label="Loop API URL" validateStatus={validateStatus}>
-            <Input
-              type="url"
-              value={url}
-              onChange={this.handleChange}
-              placeholder="https://localhost:8081"
-              autoFocus
-            />
-          </Form.Item>
-
-          <Button
-            type="primary"
-            size="large"
-            htmlType="submit"
-            disabled={!url || !loopMacaroon}
-            loading={isCheckingUrl}
-            block
-          >
-            Set Loop URL
-          </Button>
+          {loopMacaroon && (
+            <Form.Item label="Loop API URL" validateStatus={validateStatus}>
+              <Input
+                type="url"
+                value={url}
+                onChange={this.handleChange}
+                placeholder="https://localhost:8081"
+                autoFocus
+              />
+            </Form.Item>
+          )}
+          {loopMacaroon && (
+            <Button
+              type="primary"
+              size="large"
+              htmlType="submit"
+              disabled={!url || !loopMacaroon}
+              loading={isCheckingUrl}
+              block
+            >
+              Set Loop URL
+            </Button>
+          )}
         </Form>
       </div>
     );
