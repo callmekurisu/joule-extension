@@ -50,7 +50,7 @@ class LoopSetup extends React.Component<Props, State> {
   }
 
   render() {
-    const { validation, url, loopMacaroon } = this.state;
+    const { validation, url, loopMacaroon, submittedUrl } = this.state;
     const { isCheckingUrl } = this.props;
     const validateStatus = url ? (validation ? 'error' : 'success') : undefined;
     return (
@@ -72,7 +72,14 @@ class LoopSetup extends React.Component<Props, State> {
                 <a href="https://github.com/lightninglabs/loop" target="_blank">
                   Loop GitHub project
                 </a>
-                .
+              </p>
+              <p>
+                If you're unable to connect to your loopd, try{' '}
+                <a href={`${submittedUrl}/v1/loop/out/terms`} target="_blank">
+                  clicking this link
+                </a>{' '}
+                and making sure it loads correctly. If there are SSL errors, click
+                "advanced" and proceed to accept the certificate.
               </p>
               <p>
                 You will then need to connect Joule to your Loop RPC interface via the
