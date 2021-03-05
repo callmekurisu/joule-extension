@@ -184,8 +184,8 @@ class QuoteModal extends React.Component<Props> {
       max_miner_fee: quote.htlc_sweep_fee_sat,
       max_prepay_amt: quote.prepay_amt_sat,
       max_prepay_routing_fee: quote.prepay_amt_sat,
-      max_swap_fee: p.maxSwapFee || quote.swap_fee_sat,
-      max_swap_routing_fee: p.maxSwapFee || quote.swap_fee_sat,
+      max_swap_fee: quote.swap_fee_sat,
+      max_swap_routing_fee: quote.swap_fee_sat,
       sweep_conf_target: p.sweepConfirmationTarget,
     };
     p.loopOut(req);
